@@ -171,3 +171,34 @@ pre{padding:10px;white-space:pre-wrap;overflow:auto}
   white-space:nowrap;
 }
 .btn-minor:hover{ color:var(--ink); border-color:var(--ink); }
+
+/* =============================================
+   MOBILE — solo schermi ≤ 768px
+   Il CSS desktop sopra non viene toccato.
+   ============================================= */
+
+@media (max-width: 768px) {
+
+  /* Viewer: ridotto per lasciare spazio ai controlli */
+  #viewer {
+    height: 60vh;
+    min-height: unset;
+    max-height: 500px;
+  }
+
+  /* Header compatto + titolo scalato con clamp */
+  header { padding: 8px 12px; }
+  header h1 { font-size: clamp(1.2rem, 4vw, 1.8rem); }
+
+  /* Canvas Cesium: swipe verticale → scroll pagina, non rotazione globo */
+  .cesium-widget canvas { touch-action: pan-y; }
+
+  /* Bottoni principali: 44px minimo touch target (Apple HIG) */
+  .btns > button { min-height: 44px; }
+}
+
+/* Landscape mobile (iPhone ruotato) — NON impatta MacBook (height > 500px) */
+@media (orientation: landscape) and (max-height: 500px) {
+  header { padding: 4px 12px; }
+  header h1 { font-size: clamp(0.9rem, 3vw, 1.1rem); }
+}
