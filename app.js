@@ -185,6 +185,28 @@ function sunECEF(jd) {
   } catch (_) { return null; }
 }
 
+// ------- Eclipse Tracker (Step A) -------
+
+// Modello cilindrico: errore ~1%, 2-4 min sulle transizioni (documentato).
+// satCartesian: Cesium.Cartesian3 in metri (ECEF), jd: Cesium.JulianDate
+function isInEclipse(satCartesian, jd) {
+  const sunDir = sunECEF(jd);
+  if (!sunDir) return false;
+  const dot = Cesium.Cartesian3.dot(satCartesian, sunDir);
+  if (dot >= 0) return false; // satellite sul lato illuminato
+  const proj    = Cesium.Cartesian3.multiplyByScalar(sunDir, dot, new Cesium.Cartesian3());
+  const perp    = Cesium.Cartesian3.subtract(satCartesian, proj, new Cesium.Cartesian3());
+  const perpDist = Cesium.Cartesian3.magnitude(perp);
+  return perpDist < 6_371_000; // raggio Terra in metri
+}
+
+// Restituisce baseColor se illuminato, colore ombra se in eclisse.
+function eclipseColorAt(baseColor, satCartesian, jd) {
+  return isInEclipse(satCartesian, jd)
+    ? Cesium.Color.fromCssColorString('#2d1b69') // viola scuro = ombra
+    : baseColor;
+}
+
 // ------- Ground Station -------
 
 // Raggio del cerchio di visibilità a terra (m) con elevazione minima ε
@@ -610,6 +632,11 @@ elReset.addEventListener('click', () => { viewer.clock.currentTime = viewer.cloc
       const t = Cesium.JulianDate.toDate(viewer.clock.currentTime)
         .toISOString().replace('T', ' ').replace('Z', ' UTC');
       log(`Tick: sim×${viewer.clock.multiplier}, ~${fps.toFixed(0)} FPS, t=${t}`);
+      // [Step A — eclipse test, rimuovere dopo verifica]
+      if (satEntities.length > 0) {
+        const p = satEntities[0].entity.position.getValue(viewer.clock.currentTime);
+        if (p) console.log(`[Eclipse] ${satEntities[0].name}: ${isInEclipse(p, viewer.clock.currentTime) ? '🌑 ECLISSE' : '☀️ LUCE'}`);
+      }
     } catch (_) {}
   }, 2000);
 
