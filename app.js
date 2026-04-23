@@ -635,9 +635,8 @@ elSim.addEventListener('click', () => {
     viewer.clock.stopTime    = globalStop;
     viewer.clock.shouldAnimate = true;
 
-    const safeOffset = new Cesium.HeadingPitchRange(0.0, Cesium.Math.toRadians(-35), 12_000_000);
+    const safeOffset = new Cesium.HeadingPitchRange(0.0, Cesium.Math.toRadians(-35), 8_000_000);
     viewer.trackedEntity = undefined;
-    satEntities[0].entity.viewFrom = new Cesium.Cartesian3(-9_000_000, 9_000_000, 5_000_000);
     viewer.flyTo(satEntities[0].entity, { offset: safeOffset, duration: 0.0 });
 
     if (gsGd) updateAosLos();
