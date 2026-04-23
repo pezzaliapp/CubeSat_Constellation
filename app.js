@@ -59,7 +59,6 @@ if ('serviceWorker' in navigator) {
 // ------- Cesium Viewer -------
 Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJjMjZjM2MxMy0yOTBhLTQ0OWYtOTZlZS1hYWJmNDJiZGE3ZjAiLCJpZCI6MzU0MTYzLCJpYXQiOjE3NzY5MzQxNzB9.t7BmCukJ3Kvc92vbwPIhRDNK3R_BkluyQG9872_1XzQ';
 const viewer = new Cesium.Viewer('viewer', {
-  imageryProvider: new Cesium.IonImageryProvider({ assetId: 3 }),
   animation: true,
   timeline: true,
   baseLayerPicker: false,
@@ -73,6 +72,22 @@ const viewer = new Cesium.Viewer('viewer', {
 viewer.scene.globe.enableLighting = true;
 viewer.scene.globe.show = true;
 viewer.scene.skyAtmosphere.show = true;
+
+// Bing Maps Aerial (Ion asset 3) caricato async; fallback OSM se Ion non risponde
+Cesium.IonImageryProvider.fromAssetId(3)
+  .then(provider => {
+    viewer.imageryLayers.removeAll();
+    viewer.imageryLayers.addImageryProvider(provider);
+  })
+  .catch(() => {
+    viewer.imageryLayers.removeAll();
+    viewer.imageryLayers.addImageryProvider(
+      new Cesium.UrlTemplateImageryProvider({
+        url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+        credit: '© OpenStreetMap contributors',
+      })
+    );
+  });
 
 // Cesium World Terrain (Ion asset 1) — caricato in async, fallback sfera piatta
 Cesium.CesiumTerrainProvider.fromIonAssetId(1)
