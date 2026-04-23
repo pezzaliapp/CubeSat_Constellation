@@ -1,5 +1,5 @@
 /* CubeSat Orbit — CesiumJS TLE viewer (PWA shell)
- * v8 — Libreria satelliti con fetch live da Celestrak — MIT 2025
+ * v9 — Ground Station: cono visibilità + AOS/LOS — MIT 2025
  */
 'use strict';
 
@@ -26,8 +26,15 @@ const elReset    = document.getElementById('reset');
 const elStatus   = document.getElementById('status');
 const elInstall  = document.getElementById('btnInstall');
 const elLog      = document.getElementById('log');
-const telemetryEl = document.getElementById('telemetry');
-const sunEl      = document.getElementById('suninfo');
+const telemetryEl       = document.getElementById('telemetry');
+const sunEl             = document.getElementById('suninfo');
+const elBtnStation      = document.getElementById('btnStation');
+const elBtnGeo          = document.getElementById('btnGeo');
+const elBtnClearStation = document.getElementById('btnClearStation');
+const elStationInfo     = document.getElementById('stationInfo');
+const elStationCoords   = document.getElementById('stationCoords');
+const elAoslosPanel     = document.getElementById('aoslosPanel');
+const elAoslos          = document.getElementById('aoslos');
 
 // ------- PWA Install Prompt -------
 let deferredPrompt = null;
@@ -97,6 +104,11 @@ const PALETTE = [
 
 // Array entità: { entity, satrec, name, color, periodMin }
 let satEntities = [];
+
+// Stato ground station
+let gsEntity = null;
+let gsGd     = null;   // { longitude, latitude, height } — radianti e km
+let pickMode = false;
 
 // ------- Helpers -------
 function log(msg) {
@@ -172,6 +184,218 @@ function sunECEF(jd) {
       : new Cesium.Cartesian3(x, y, z);
   } catch (_) { return null; }
 }
+
+// ------- Ground Station -------
+
+// Raggio del cerchio di visibilità a terra (m) con elevazione minima ε
+function visibilityRadiusMeters(altKm, minElevDeg = 5) {
+  const Re  = 6371;
+  const eps = Cesium.Math.toRadians(minElevDeg);
+  const eta = Math.asin(Re * Math.cos(eps) / (Re + altKm));
+  const rho = Math.PI / 2 - eps - eta;
+  return Re * 1000 * rho;
+}
+
+// Elevazione angolare (°) del satellite visto dalla ground station
+function getElevationDeg(satrec, gd, date) {
+  const prop = satellite.propagate(satrec, date);
+  if (!prop.position) return null;
+  const gmst = satellite.gstime(date);
+  const ecf  = satellite.eciToEcf(prop.position, gmst);
+  const ang  = satellite.ecfToLookAngles(gd, ecf);
+  return ang.elevation * (180 / Math.PI);
+}
+
+// Scansione AOS/TCA/LOS nella finestra temporale simulata (step 30 s)
+function findNextPass(satrec, gd, startJD, stopJD, minElevDeg = 5) {
+  const stepSec  = 30;
+  const totalSec = Cesium.JulianDate.secondsDifference(stopJD, startJD);
+  let inPass = false, aos = null, tca = null, maxElev = -Infinity;
+
+  for (let t = 0; t <= totalSec; t += stepSec) {
+    const jd   = Cesium.JulianDate.addSeconds(startJD, t, new Cesium.JulianDate());
+    const elev = getElevationDeg(satrec, gd, Cesium.JulianDate.toDate(jd));
+    if (elev === null) continue;
+
+    if (!inPass && elev >= minElevDeg) {
+      inPass = true; aos = jd.clone(); maxElev = elev;
+    } else if (inPass && elev > maxElev) {
+      maxElev = elev; tca = jd.clone();
+    } else if (inPass && elev < minElevDeg) {
+      return { aos, tca: tca || aos, los: jd.clone(), maxElev };
+    }
+  }
+  return inPass ? { aos, tca: tca || aos, los: stopJD.clone(), maxElev } : null;
+}
+
+function fmtTime(jd) {
+  return Cesium.JulianDate.toDate(jd).toLocaleTimeString('it-IT', {
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  });
+}
+
+function updateAosLos() {
+  if (!elAoslos || !gsGd) return;
+  if (satEntities.length === 0) {
+    elAoslos.textContent = 'Nessun satellite caricato — premi Simula prima.';
+    return;
+  }
+  const startJD = viewer.clock.startTime;
+  const stopJD  = viewer.clock.stopTime;
+  const lines = satEntities.map(({ satrec, name }) => {
+    const pass = findNextPass(satrec, gsGd, startJD, stopJD);
+    if (!pass) return `${name}: nessun passaggio nella finestra simulata`;
+    const dur = Math.round(
+      Cesium.JulianDate.secondsDifference(pass.los, pass.aos) / 60
+    );
+    return (
+      `${name}\n` +
+      `  AOS ${fmtTime(pass.aos)} · TCA ${fmtTime(pass.tca)} · LOS ${fmtTime(pass.los)}\n` +
+      `  Elev. max: ${pass.maxElev.toFixed(1)}° · Durata: ~${dur} min`
+    );
+  });
+  elAoslos.textContent = lines.join('\n\n');
+}
+
+function clearGroundStation() {
+  if (gsEntity) { viewer.entities.remove(gsEntity); gsEntity = null; }
+  gsGd = null;
+  if (elStationInfo)  elStationInfo.hidden  = true;
+  if (elBtnClearStation) elBtnClearStation.hidden = true;
+  if (elAoslosPanel)  elAoslosPanel.hidden  = true;
+}
+
+function placeGroundStation(cartesian) {
+  clearGroundStation();
+
+  const carto = Cesium.Cartographic.fromCartesian(cartesian);
+  const lat   = Cesium.Math.toDegrees(carto.latitude);
+  const lon   = Cesium.Math.toDegrees(carto.longitude);
+  gsGd = { longitude: carto.longitude, latitude: carto.latitude, height: 0 };
+
+  // Raggio del cerchio basato sull'altitudine del satellite primario (default 500 km LEO)
+  let altKm = 500;
+  if (satEntities.length > 0) {
+    const p = satEntities[0].entity.position.getValue(viewer.clock.currentTime);
+    if (p) altKm = Cesium.Cartographic.fromCartesian(p).height / 1000;
+  }
+
+  gsEntity = viewer.entities.add({
+    name: 'Ground Station',
+    position: cartesian,
+    point: {
+      pixelSize: 10,
+      color: Cesium.Color.RED,
+      outlineColor: Cesium.Color.WHITE,
+      outlineWidth: 2,
+    },
+    label: {
+      text: '📍 GS',
+      fillColor: Cesium.Color.RED,
+      font: '12px sans-serif',
+      pixelOffset: new Cesium.Cartesian2(0, -22),
+      disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      showBackground: true,
+      backgroundColor: Cesium.Color.fromAlpha(Cesium.Color.BLACK, 0.55),
+    },
+    ellipse: {
+      semiMajorAxis: visibilityRadiusMeters(altKm),
+      semiMinorAxis: visibilityRadiusMeters(altKm),
+      material: Cesium.Color.RED.withAlpha(0.07),
+      outline: true,
+      outlineColor: Cesium.Color.RED.withAlpha(0.45),
+      outlineWidth: 1,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+    },
+  });
+
+  elStationCoords.textContent = `${lat.toFixed(3)}°, ${lon.toFixed(3)}°`;
+  elStationInfo.hidden  = false;
+  elBtnClearStation.hidden = false;
+  elAoslosPanel.hidden  = false;
+  updateAosLos();
+}
+
+// Handler click sul globo (attivo solo in pick mode)
+const gsPickHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+gsPickHandler.setInputAction((e) => {
+  if (!pickMode) return;
+  const ray = viewer.camera.getPickRay(e.position);
+  const pos = viewer.scene.globe.pick(ray, viewer.scene);
+  if (!pos) return;
+
+  pickMode = false;
+  elBtnStation.classList.remove('btn-picking');
+  elBtnStation.textContent = '📍 Piazza Stazione';
+  viewer.scene.screenSpaceCameraController.enableRotate = true;
+  viewer.scene.screenSpaceCameraController.enableZoom   = true;
+
+  placeGroundStation(pos);
+  elStatus.textContent = 'Stazione piazzata ✅';
+}, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+// Bottone pick mode
+elBtnStation?.addEventListener('click', () => {
+  pickMode = !pickMode;
+  if (pickMode) {
+    elBtnStation.classList.add('btn-picking');
+    elBtnStation.textContent = '🎯 Clicca sul globo…';
+    viewer.scene.screenSpaceCameraController.enableRotate = false;
+    viewer.scene.screenSpaceCameraController.enableZoom   = false;
+    elStatus.textContent = 'Clicca sul globo per piazzare la stazione a terra';
+  } else {
+    elBtnStation.classList.remove('btn-picking');
+    elBtnStation.textContent = '📍 Piazza Stazione';
+    viewer.scene.screenSpaceCameraController.enableRotate = true;
+    viewer.scene.screenSpaceCameraController.enableZoom   = true;
+    elStatus.textContent = 'Stato: pronto';
+  }
+});
+
+// Bottone geolocalizzazione browser
+elBtnGeo?.addEventListener('click', () => {
+  // Cancella eventuale pick mode attiva
+  if (pickMode) {
+    pickMode = false;
+    elBtnStation.classList.remove('btn-picking');
+    elBtnStation.textContent = '📍 Piazza Stazione';
+    viewer.scene.screenSpaceCameraController.enableRotate = true;
+    viewer.scene.screenSpaceCameraController.enableZoom   = true;
+  }
+  if (!navigator.geolocation) {
+    elStatus.textContent = 'Geolocalizzazione non supportata da questo browser';
+    return;
+  }
+  const origText = elBtnGeo.textContent;
+  elBtnGeo.disabled = true;
+  elBtnGeo.textContent = '⏳';
+  elStatus.textContent = 'Richiesta posizione GPS in corso…';
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const cart = Cesium.Cartesian3.fromDegrees(
+        pos.coords.longitude, pos.coords.latitude, 0
+      );
+      placeGroundStation(cart);
+      elStatus.textContent =
+        `Posizione GPS acquisita ✅ (±${Math.round(pos.coords.accuracy)} m)`;
+      elBtnGeo.disabled = false;
+      elBtnGeo.textContent = origText;
+    },
+    (err) => {
+      elStatus.textContent = `GPS non disponibile: ${err.message}`;
+      elBtnGeo.disabled = false;
+      elBtnGeo.textContent = origText;
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+});
+
+// Bottone rimuovi stazione
+elBtnClearStation?.addEventListener('click', () => {
+  clearGroundStation();
+  elStatus.textContent = 'Stazione rimossa';
+});
 
 // ------- Catalog -------
 const CATALOG = [
@@ -356,6 +580,8 @@ elSim.addEventListener('click', () => {
     viewer.trackedEntity = undefined;
     satEntities[0].entity.viewFrom = new Cesium.Cartesian3(-9_000_000, 9_000_000, 5_000_000);
     viewer.flyTo(satEntities[0].entity, { offset: safeOffset, duration: 0.0 });
+
+    if (gsGd) updateAosLos();
 
     const count = satEntities.length;
     elStatus.textContent = count === 1 ? 'Simulazione pronta ✅' : `${count} satelliti caricati ✅`;

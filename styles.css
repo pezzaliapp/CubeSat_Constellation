@@ -87,6 +87,28 @@ pre{padding:10px;white-space:pre-wrap;overflow:auto}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .pill{display:inline-block;margin-top:8px;padding:4px 10px;border:1px solid var(--line);border-radius:999px}
 
+/* === Ground Station === */
+.gs-btns{ margin-top:6px; }
+.gs-btns button{ font-size:13px; padding:8px; }
+
+/* Pulsante in modalità pick: bordo arancione + pulsazione */
+.btn-picking{
+  border-color:#ff8800 !important;
+  color:#ff8800 !important;
+  animation:gs-pulse 1.2s ease-in-out infinite;
+}
+@keyframes gs-pulse{
+  0%,100%{ opacity:1; }
+  50%{ opacity:.55; }
+}
+
+.pills-row{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:8px; }
+.pills-row .pill{ margin-top:0; }
+.pill-gs{ border-color:#ff444466; color:#ffaaaa; }
+
+#aoslosPanel{ margin-top:12px; }
+#aoslosPanel strong{ display:block; font-size:13px; color:var(--mut); margin-bottom:6px; }
+
 /* === Catalog === */
 .catalog{ padding:12px 16px; }
 .catalog summary{

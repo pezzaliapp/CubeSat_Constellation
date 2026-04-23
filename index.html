@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
-  <title>CubeSat Orbit — CesiumJS (PWA) v8 Catalog</title>
+  <title>CubeSat Orbit — CesiumJS (PWA) v9 GroundStation</title>
   <meta name="theme-color" content="#0b1022" />
   <meta name="description" content="PWA CesiumJS stabile per visualizzare orbite satellitari in tempo reale. Compatibile con iPhone e iPad." />
   <link rel="manifest" href="manifest.json" />
@@ -17,7 +17,7 @@
 </head>
 
 <body id="app" class="app-root">
-  <header><h1>🛰️ CubeSat Orbit — CesiumJS (PWA) <strong>v8</strong></h1></header>
+  <header><h1>🛰️ CubeSat Orbit — CesiumJS (PWA) <strong>v9</strong></h1></header>
   <main>
     <div id="viewer"></div>
 
@@ -50,7 +50,21 @@ HST
         <button id="btnInstall" hidden>➕ Installa</button>
       </div>
 
-      <div id="status" class="pill">Stato: pronto</div>
+      <div class="btns gs-btns">
+        <button id="btnStation">📍 Piazza Stazione</button>
+        <button id="btnGeo">📡 Usa mia posizione</button>
+        <button id="btnClearStation" hidden>✖ Rimuovi</button>
+      </div>
+
+      <div class="pills-row">
+        <div id="status" class="pill">Stato: pronto</div>
+        <div id="stationInfo" class="pill pill-gs" hidden>📍 <strong id="stationCoords">-</strong></div>
+      </div>
+
+      <div id="aoslosPanel" hidden>
+        <strong>Passaggi sopra la stazione (el. min. 5°)</strong>
+        <pre id="aoslos">-</pre>
+      </div>
 
       <div class="two info">
         <div><strong>Telemetria</strong><pre id="telemetry">Altitudine: -
