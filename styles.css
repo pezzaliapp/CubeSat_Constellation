@@ -29,6 +29,7 @@ header{
 }
 main{flex:1;overflow:auto;padding:8px}
 footer{text-align:center;padding:12px;color:var(--mut)}
+.ver{font-size:11px;opacity:.55;}
 
 .card{
   background:var(--card);
