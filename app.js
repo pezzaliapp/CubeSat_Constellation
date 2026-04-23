@@ -208,7 +208,7 @@ const CATALOG = [
 ];
 
 async function fetchTLE(norad) {
-  const url = `https://celestrak.org/satcat/tle.php?CATNR=${norad}`;
+  const url = `https://celestrak.org/NORAD/elements/gp.php?CATNR=${norad}&FORMAT=TLE`;
   let resp;
   try {
     resp = await fetch(url);
