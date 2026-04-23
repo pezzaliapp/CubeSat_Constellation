@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
-  <title>CubeSat Orbit — CesiumJS (PWA) v5b MobileSafe</title>
+  <title>CubeSat Orbit — CesiumJS (PWA) v7 BugFix</title>
   <meta name="theme-color" content="#0b1022" />
   <meta name="description" content="PWA CesiumJS stabile per visualizzare orbite satellitari in tempo reale. Compatibile con iPhone e iPad." />
   <link rel="manifest" href="manifest.json" />
@@ -17,15 +17,18 @@
 </head>
 
 <body id="app" class="app-root">
-  <header><h1>🛰️ CubeSat Orbit — CesiumJS (PWA) <strong>v5b MobileSafe</strong></h1></header>
+  <header><h1>🛰️ CubeSat Orbit — CesiumJS (PWA) <strong>v7</strong></h1></header>
   <main>
     <div id="viewer"></div>
 
     <section class="card controls">
-      <label for="tle">TLE (Two-Line Elements)</label>
+      <label for="tle">TLE — uno o più satelliti (formato Celestrak, 2 o 3 righe per satellite)</label>
       <textarea id="tle" spellcheck="false">ISS (ZARYA)
 1 25544U 98067A   24299.50000000  .00016717  00000-0  10270-3 0  9995
-2 25544  51.6437  28.9044 0005712  35.3822  65.1452 15.50386381445585</textarea>
+2 25544  51.6437  28.9044 0005712  35.3822  65.1452 15.50386381445585
+HST
+1 20580U 90037B   24299.50000000  .00000601  00000-0  23090-4 0  9996
+2 20580  28.4700 327.0413 0002459 227.0726 132.9882 15.09286622424869</textarea>
 
       <div class="two">
         <div><label>Durata (minuti)</label><input id="minutes" type="number" value="120" min="10" max="1440"></div>
