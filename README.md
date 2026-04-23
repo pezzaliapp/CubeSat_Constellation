@@ -1,115 +1,177 @@
-# 🛰️ CubeSat Orbit — CesiumJS TLE Viewer (PWA)
+# 🛰️ CubeSat Constellation — CesiumJS TLE Viewer (PWA)
 
-**Versione v5b — Telemetria Leggera + Mappe + Etichetta dinamica**  
-Sviluppato da **pezzaliAPP.com** · Licenza **MIT 2025**
+![CubeSat Constellation](docs/screenshot.png)
 
----
+[🚀 Live Demo](https://pezzaliapp.github.io/CubeSat_Constellation) ·
+[📡 Celestrak](https://celestrak.org) ·
+[📜 MIT License](#-license)
 
-## 🚀 Descrizione
-
-**CubeSat Orbit** è una **Progressive Web App** interattiva che visualizza in tempo reale  
-le orbite di satelliti artificiali a partire dai dati **TLE (Two-Line Elements)**.  
-
-L’applicazione sfrutta la potenza di **CesiumJS** e della libreria **satellite.js**  
-per generare orbite 3D accurate, sincronizzate nel tempo simulato,  
-con **telemetria live** e coordinate aggiornate a ogni frame.
+> *"Osservare la Terra da lassù significa capire quanto sia fragile da quaggiù."*
+> — Alessandro Pezzali
 
 ---
 
-## 🌍 Caratteristiche principali
+## 🇬🇧 English
 
-- Visualizzazione **3D in tempo reale** delle orbite (OpenStreetMap + CesiumJS)
-- Lettura diretta dei dati **TLE**
-- **Telemetria leggera**: altitudine, velocità, latitudine, longitudine
-- **Subsolar point** e calcolo dinamico **Azimut / Elevazione del Sole**
-- Link integrati per aprire la posizione in **Google Maps** e **OpenStreetMap**
-- Etichetta dinamica sopra il satellite con **Alt / Vel** in tempo reale
-- Micro-logger interno per FPS stimato e tempo simulato
-- Funziona **offline** come PWA installabile su desktop e mobile
+**CubeSat Constellation** is an interactive Progressive Web App that visualizes satellite
+orbits in real time on a 3D globe, using TLE (Two-Line Element) data and accurate SGP4/SDP4
+propagation. Load a full constellation from the built-in live Celestrak catalog, or paste any
+standard TLE block directly.
 
----
+### Features
 
-## ⚙️ Architettura
+| Feature | Details |
+|---|---|
+| 🌍 Interactive 3D globe | CesiumJS + OpenStreetMap tiles, day/night shading |
+| 🛰 Multi-satellite constellation | N satellites simultaneously, each with its own color and orbit |
+| 📡 Live Celestrak catalog | 10 curated satellites across 4 categories, TLEs fetched fresh |
+| 📊 Real-time telemetry | Altitude, velocity (from `prop.velocity`), real orbital period, lat/lon |
+| ☀️ Sun tracking | Subsolar point, azimuth/elevation, dynamic day/night terminator |
+| 🗺 Map links | Google Maps and OpenStreetMap centered on the satellite |
+| 📲 Installable PWA | Works offline on desktop and mobile (iOS, Android, macOS, Windows) |
 
-- **Motore 3D:** CesiumJS  
-- **Propagazione orbitale:** satellite.js  
-- **Interfaccia:** HTML / CSS / JavaScript vanilla  
-- **Offline:** service-worker.js  
-- **Formato input:** Two-Line Elements (TLE)
+### Quick Start
 
----
+```bash
+git clone https://github.com/pezzaliapp/CubeSat_Constellation
+cd CubeSat_Constellation
+python3 -m http.server 8080
+# Open http://localhost:8080
+```
 
-## 💡 Esempio TLE (ISS — ZARYA)
+> **Note:** Serve via HTTP (not `file://`) to enable the Service Worker and offline mode.
 
-1 25544U 98067A   24299.50000000  .00016717  00000-0  10270-3 0  9995
-2 25544  51.6437  28.9044 0005712  35.3822  65.1452 15.50386381445585
+### How to Use
 
----
+1. Open the **📡 Satellite Library** panel and click any satellite to fetch its live TLE from Celestrak
+2. Or paste one or more TLE blocks directly in the text field (Celestrak 2-line or 3-line format)
+3. Click **▶️ Simula** — the satellite (or constellation) appears on the globe
+4. Use **⏯️ Play/Pause** and **🔄 Reset** to control the simulation
+5. Click **🗑 Cancella** to clear the TLE field and start a new constellation from scratch
 
-## 🕹️ Comandi
+### TLE Data Source
 
-| Pulsante | Funzione |
-|-----------|-----------|
-| **Simula** | Genera e visualizza l’orbita |
-| **Play/Pause** | Avvia o ferma la simulazione |
-| **Reset** | Riporta l’orbitale all’inizio |
-| **Installa** | Installa la PWA su dispositivo locale |
+TLE data is fetched live from **[Celestrak](https://celestrak.org)** via their public GP endpoint:
 
----
+```
+https://celestrak.org/NORAD/elements/gp.php?CATNR={norad}&FORMAT=TLE
+```
 
-## 📡 Telemetria
+No registration or API key required.
 
-| Parametro | Descrizione |
-|------------|-------------|
-| **Altitudine** | Altezza del satellite sopra il livello medio del mare |
-| **Velocità** | Velocità relativa stimata tra due frame successivi |
-| **Periodo** | Periodo orbitale stimato dai dati TLE |
-| **Lat/Lon** | Coordinate geografiche in gradi decimali |
-| **Subsolare / Azimut / Elevazione** | Posizione del Sole e orientamento relativo al satellite |
+### File Structure
 
----
-
-## 🧱 Struttura dei file
-
-/index.html
-/app.js
-/styles.css
-/manifest.json
-/service-worker.js
-/README.md
+```
+/index.html          — HTML shell
+/app.js              — Core logic: propagation, rendering, telemetry, catalog
+/styles.css          — Dark space layout, mobile-safe
+/manifest.json       — PWA manifest
+/service-worker.js   — Offline cache (cache-first strategy)
+/CHANGELOG.md        — Version history
+/ANALISI_INIZIALE.md — Technical analysis and feature roadmap
+```
 
 ---
 
-## 📲 Installazione
+## 🇮🇹 Italiano
 
-1. Clona o scarica il repository:  
-   ```bash
-   git clone https://github.com/pezzaliapp/PWA_Cesium_CubeSat_TLE
+**CubeSat Constellation** è una Progressive Web App interattiva che visualizza in tempo reale
+le orbite di uno o più satelliti artificiali su un globo 3D, a partire dai dati TLE
+(Two-Line Elements) con propagazione SGP4/SDP4 accurata. Puoi caricare una costellazione
+intera dal catalogo integrato con TLE live da Celestrak, oppure incollare qualsiasi TLE standard.
 
-	2.	Apri index.html nel browser (anche offline).
-	3.	Se richiesto, consenti l’installazione della PWA.
-	4.	Inserisci un TLE e premi Simula.
+### Caratteristiche principali
 
-⸻
+| Funzione | Dettaglio |
+|---|---|
+| 🌍 Globo 3D interattivo | CesiumJS + tile OpenStreetMap, ombreggiatura giorno/notte |
+| 🛰 Multi-satellite | N satelliti simultanei, ognuno con colore e orbita propria |
+| 📡 Libreria Celestrak live | 10 satelliti in 4 categorie, TLE aggiornati in tempo reale |
+| 📊 Telemetria live | Altitudine, velocità (da `prop.velocity`), periodo orbitale reale, lat/lon |
+| ☀️ Posizione del Sole | Punto subsolare, azimut/elevazione, terminatore giorno/notte |
+| 🗺 Link mappa | Google Maps e OpenStreetMap centrati sul satellite |
+| 📲 PWA installabile | Funziona offline su desktop e mobile |
 
-🧪 Compatibilità
-	•	✅ Chrome, Edge, Safari, Firefox (desktop e mobile)
-	•	✅ iOS, Android, macOS, Windows, Linux
-	•	⚙️ Offline Ready — nessuna dipendenza cloud
-	•	🌐 CesiumJS & satellite.js inclusi localmente o via CDN
+### Avvio rapido
 
-⸻
+```bash
+git clone https://github.com/pezzaliapp/CubeSat_Constellation
+cd CubeSat_Constellation
+python3 -m http.server 8080
+# Apri http://localhost:8080
+```
 
-👨‍🚀 Autore
+### Come si usa
 
-Alessandro Pezzali — pezzaliAPP.com
+1. Apri il pannello **📡 Libreria satelliti** e clicca un satellite per caricare il TLE live
+2. Oppure incolla uno o più TLE nel campo di testo (formato Celestrak 2 o 3 righe per satellite)
+3. Premi **▶️ Simula** — il satellite (o la costellazione) appare sul globo
+4. Usa **⏯️ Play/Pause** e **🔄 Reset** per controllare la simulazione
+5. Usa **🗑 Cancella** per svuotare il campo e costruire una nuova costellazione
+
+---
+
+## 🗺 Roadmap
+
+Ideas sourced from the [initial technical analysis](ANALISI_INIZIALE.md).
+
+| # | Feature | Status |
+|---|---|---|
+| 1 | Multi-satellite constellation mode | ✅ Done (v6) |
+| 2 | **Ground station + visibility cone + AOS/LOS** | 🔄 In progress (v9) |
+| 3 | Eclipse tracker — sunlit vs. shadow orbit coloring | ⏳ Planned |
+| 4 | Doppler shift calculator for ham radio operators | ⏳ Planned |
+| 5 | Pass predictor with .ics calendar export | ⏳ Planned |
+| 6 | AR sky compass mode (mobile, DeviceOrientation API) | ⏳ Planned |
+| 7 | Orbital decay & re-entry estimator (BSTAR drag term) | ⏳ Planned |
+| 8 | Live Celestrak satellite catalog | ✅ Done (v8) |
+| 9 | Communication coverage footprint (EllipseGraphics) | ⏳ Planned |
+| 10 | Historical replay with annotated events timeline | ⏳ Planned |
+
+---
+
+## ⚠️ Known Limitations / Limitazioni note
+
+**Geolocation (upcoming — Ground Station feature)**
+The HTML5 Geolocation API (`navigator.geolocation`) requires a **secure context** (HTTPS or
+`localhost`). It will not work if the app is opened directly via `file://`. When deployed on
+GitHub Pages or any HTTPS host, it works correctly.
+
+**Celestrak API rate limits**
+The live TLE fetch uses Celestrak's public endpoint without authentication. For personal and
+educational use this is fine. Heavy automated usage (many rapid fetches) may hit undocumented
+rate limits. For production/high-traffic scenarios, cache TLEs locally or register for
+[Space-Track](https://www.space-track.org/) direct access.
+
+**PWA offline installation**
+The Service Worker and "Add to Home Screen" prompt are only available when the app is served
+over **HTTPS** on a public domain (or `localhost`). Opening `index.html` directly from disk
+activates neither. GitHub Pages provides free HTTPS hosting and enables full PWA features.
+
+---
+
+## 🙏 Credits & Technologies
+
+| Technology | Role | Link |
+|---|---|---|
+| **CesiumJS** | 3D globe, entity rendering, clock & timeline | [cesium.com](https://cesium.com/cesiumjs/) |
+| **satellite.js** | SGP4/SDP4 orbital propagation from TLE | [github.com/shashwatak/satellite-js](https://github.com/shashwatak/satellite-js) |
+| **Celestrak** | Public TLE data source (GP element sets) | [celestrak.org](https://celestrak.org) |
+| **OpenStreetMap** | Map tiles for the globe base layer | [openstreetmap.org](https://www.openstreetmap.org) |
+
+Map tiles © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright) — ODbL license.
+
+---
+
+## 👨‍🚀 Author
+
+**Alessandro Pezzali** — [pezzaliAPP.com](https://pezzaliapp.com)
 Cultura digitale tra codice, orbite e immaginazione.
 
-“Osservare la Terra da lassù significa capire quanto sia fragile da quaggiù.”
+---
 
-⸻
+## 📜 License
 
-📜 Licenza
-
-MIT License — 2025
-Utilizzabile liberamente per fini educativi, scientifici e divulgativi.
+MIT License — © 2025-2026 Alessandro Pezzali
+Free to use for educational, scientific, creative and commercial purposes.
+See [LICENSE](LICENSE) for the full text.
