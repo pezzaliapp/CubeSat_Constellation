@@ -110,6 +110,10 @@ let gsEntity = null;
 let gsGd     = null;   // { longitude, latitude, height } — radianti e km
 let pickMode = false;
 
+// Cache eclipse: evita scan costoso ad ogni tick. Aggiornata ogni 2s reali.
+// name → { transitionJD: JulianDate|null, currentlyInEclipse: bool }
+const eclipseTransitionCache = new Map();
+
 // ------- Helpers -------
 function log(msg) {
   const lines = elLog.textContent.split('\n');
@@ -205,6 +209,23 @@ function eclipseColorAt(baseColor, satCartesian, jd) {
   return isInEclipse(satCartesian, jd)
     ? Cesium.Color.fromCssColorString('#2d1b69') // viola scuro = ombra
     : baseColor;
+}
+
+// Trova il prossimo cambio di stato eclipse (scan a 30s dal tempo corrente).
+// Restituisce JulianDate della transizione, o null se nessuna nella finestra.
+function findNextEclipseTransition(satrec, currentJD, stopJD, currentlyInEclipse) {
+  const stepSec  = 30;
+  const totalSec = Cesium.JulianDate.secondsDifference(stopJD, currentJD);
+  for (let t = stepSec; t <= totalSec; t += stepSec) {
+    const jd   = Cesium.JulianDate.addSeconds(currentJD, t, new Cesium.JulianDate());
+    const prop = satellite.propagate(satrec, Cesium.JulianDate.toDate(jd));
+    if (!prop.position) continue;
+    const gmst = satellite.gstime(Cesium.JulianDate.toDate(jd));
+    const gd   = satellite.eciToGeodetic(prop.position, gmst);
+    const cart = Cesium.Cartesian3.fromRadians(gd.longitude, gd.latitude, gd.height * 1000);
+    if (isInEclipse(cart, jd) !== currentlyInEclipse) return jd;
+  }
+  return null;
 }
 
 // ------- Ground Station -------
@@ -637,6 +658,15 @@ elReset.addEventListener('click', () => { viewer.clock.currentTime = viewer.cloc
         const p = satEntities[0].entity.position.getValue(viewer.clock.currentTime);
         if (p) console.log(`[Eclipse] ${satEntities[0].name}: ${isInEclipse(p, viewer.clock.currentTime) ? '🌑 ECLISSE' : '☀️ LUCE'}`);
       }
+      // Aggiorna cache eclipse per tutti i satelliti (ogni 2s reali)
+      satEntities.forEach(({ satrec, name, entity }) => {
+        const now = viewer.clock.currentTime;
+        const p   = entity.position.getValue(now);
+        if (!p) return;
+        const inEclipse    = isInEclipse(p, now);
+        const transitionJD = findNextEclipseTransition(satrec, now, viewer.clock.stopTime, inEclipse);
+        eclipseTransitionCache.set(name, { transitionJD, currentlyInEclipse: inEclipse });
+      });
     } catch (_) {}
   }, 2000);
 
@@ -665,6 +695,25 @@ elReset.addEventListener('click', () => { viewer.clock.currentTime = viewer.cloc
       const osm    = `https://www.openstreetmap.org/?mlat=${latFix}&mlon=${lonFix}#map=4/${latFix}/${lonFix}`;
       const prefix = satEntities.length > 1 ? `<strong>${primary.name}</strong><br>` : '';
 
+      // Badge eclipse: letto dalla cache (aggiornata ogni 2s reali)
+      const eclipseLines = satEntities.map(({ name }) => {
+        const cached = eclipseTransitionCache.get(name);
+        if (!cached) return '';
+        const { transitionJD, currentlyInEclipse } = cached;
+        let badge;
+        if (transitionJD && Cesium.JulianDate.greaterThan(transitionJD, t)) {
+          const delta = Cesium.JulianDate.secondsDifference(transitionJD, t);
+          const mm = Math.floor(delta / 60), ss = Math.floor(delta % 60);
+          const cd = mm > 0 ? `${mm}m ${ss}s sim.` : `${ss}s sim.`;
+          badge = currentlyInEclipse
+            ? `🌑 Eclisse (sole tra ${cd})`
+            : `☀️ Illuminato (ombra tra ${cd})`;
+        } else {
+          badge = currentlyInEclipse ? '🌑 Eclisse' : '☀️ Illuminato';
+        }
+        return satEntities.length > 1 ? `${name}: ${badge}` : badge;
+      }).filter(Boolean).join('<br>');
+
       if (telemetryEl) {
         telemetryEl.innerHTML =
           `${prefix}` +
@@ -672,6 +721,7 @@ elReset.addEventListener('click', () => { viewer.clock.currentTime = viewer.cloc
           `Velocità: ${velStr}<br>` +
           `Periodo: ${primary.periodMin} min<br>` +
           `Lat/Lon: ${lat.toFixed(2)}°, ${lon.toFixed(2)}°<br>` +
+          (eclipseLines ? `${eclipseLines}<br>` : '') +
           `<a href="${gmaps}" target="_blank" rel="noopener">Google Maps</a> · ` +
           `<a href="${osm}" target="_blank" rel="noopener">OSM</a>`;
       }
