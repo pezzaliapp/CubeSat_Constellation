@@ -2,6 +2,16 @@
 
 ---
 
+## v10.1 — Cesium Ion imagery fotorealistica (23 Aprile 2026)
+
+### ✨ Nuove feature
+- **Cesium Ion integration**: token autenticato con domain restriction su `alessandropezzali.it` e `localhost:8080`
+- **Bing Maps Aerial with Labels** (Ion asset ID 3): sostituisce OpenStreetMap con immagini satellite fotorealistiche
+- **Cesium World Terrain** (Ion asset ID 1): rilievi 3D del terreno caricati in async; fallback silenzioso alla sfera piatta se non disponibile
+- Cache SW aggiornata a v12
+
+---
+
 ## v10 — Eclipse Tracker (23 Aprile 2026)
 
 ### ✨ Nuove feature

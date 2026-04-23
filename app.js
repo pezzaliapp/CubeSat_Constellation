@@ -57,13 +57,9 @@ if ('serviceWorker' in navigator) {
 }
 
 // ------- Cesium Viewer -------
-Cesium.Ion.defaultAccessToken = undefined;
+Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJjMjZjM2MxMy0yOTBhLTQ0OWYtOTZlZS1hYWJmNDJiZGE3ZjAiLCJpZCI6MzU0MTYzLCJpYXQiOjE3NzY5MzQxNzB9.t7BmCukJ3Kvc92vbwPIhRDNK3R_BkluyQG9872_1XzQ';
 const viewer = new Cesium.Viewer('viewer', {
-  imageryProvider: new Cesium.UrlTemplateImageryProvider({
-    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-    credit: '© OpenStreetMap contributors',
-  }),
-  terrainProvider: new Cesium.EllipsoidTerrainProvider(),
+  imageryProvider: new Cesium.IonImageryProvider({ assetId: 3 }),
   animation: true,
   timeline: true,
   baseLayerPicker: false,
@@ -77,6 +73,11 @@ const viewer = new Cesium.Viewer('viewer', {
 viewer.scene.globe.enableLighting = true;
 viewer.scene.globe.show = true;
 viewer.scene.skyAtmosphere.show = true;
+
+// Cesium World Terrain (Ion asset 1) — caricato in async, fallback sfera piatta
+Cesium.CesiumTerrainProvider.fromIonAssetId(1)
+  .then(tp => { viewer.terrainProvider = tp; })
+  .catch(() => {});
 
 viewer.clock.clockStep = Cesium.ClockStep.SYSTEM_CLOCK_MULTIPLIER;
 viewer.clock.multiplier = 60;
