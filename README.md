@@ -118,7 +118,7 @@ Ideas sourced from the [initial technical analysis](ANALISI_INIZIALE.md).
 | # | Feature | Status |
 |---|---|---|
 | 1 | Multi-satellite constellation mode | ✅ Done (v6) |
-| 2 | **Ground station + visibility cone + AOS/LOS** | 🔄 In progress (v9) |
+| 2 | Ground station + visibility cone + AOS/LOS | ✅ Done (v9) |
 | 3 | Eclipse tracker — sunlit vs. shadow orbit coloring | ⏳ Planned |
 | 4 | Doppler shift calculator for ham radio operators | ⏳ Planned |
 | 5 | Pass predictor with .ics calendar export | ⏳ Planned |

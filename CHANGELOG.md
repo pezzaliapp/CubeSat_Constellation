@@ -2,6 +2,27 @@
 
 ---
 
+## v9 — Ground Station + Cono Visibilità + AOS/LOS ✅ Completa e testata (23 Aprile 2026)
+
+### Funzionalità
+- **📍 Piazza Stazione (pick mode)**: pulsante che attiva la selezione dal globo. La camera viene bloccata durante la selezione (rotate/zoom disabilitati), il pulsante lampeggia arancione con animazione CSS. Il click sul globo Cesium converte le coordinate schermo in geodetiche e piazza la stazione.
+- **📡 Usa mia posizione**: chiama `navigator.geolocation.getCurrentPosition()` con `enableHighAccuracy: true`. Mostra l'accuratezza GPS in metri nello status bar. Gestisce errori (permesso negato, timeout, browser non supportato). Disattiva automaticamente l'eventuale pick mode attiva.
+- **Cerchio di visibilità**: ellisse Cesium semitrasparente sul suolo (`CLAMP_TO_GROUND`) con raggio calcolato dalla formula geometrica sferica: `η = arcsin(Re·cos(ε)/(Re+H))`, `ρ = π/2 − ε − η`, `r = Re·ρ`. Raggio basato sull'altitudine attuale del satellite primario; default 500 km LEO se nessun satellite è caricato.
+- **Panel AOS/TCA/LOS**: scansione a passi da 30 s sull'intera finestra temporale simulata per ogni satellite della costellazione. Mostra: orario AOS, TCA, LOS, elevazione massima in gradi, durata del passaggio in minuti.
+- **Elevazione minima 5°**: soglia standard per radioamatori e osservazioni ottiche.
+- **Ricalcolo automatico**: `updateAosLos()` viene chiamato automaticamente al termine di ogni pressione di "Simula", aggiornando i passaggi quando si cambiano TLE o finestra temporale.
+- **✖ Rimuovi Stazione**: cancella l'entità Cesium, azzera `gsGd` e nasconde tutti i panel GS.
+- **Cache SW v10**: invalida la cache precedente.
+
+### Note di test (23 Aprile 2026)
+- ✅ Piazza Stazione via click sul globo: stazione posizionata correttamente, cerchio di visibilità disegnato.
+- ✅ Geolocalizzazione HTML5 su HTTPS: posizione acquisita con feedback accuratezza GPS in metri.
+- ✅ AOS/TCA/LOS per ISS e Hubble: passaggi calcolati correttamente nella finestra simulata.
+- ✅ Cono di visibilità: raggio visivamente coerente con l'altitudine del satellite primario.
+- ✅ Deploy v9 su sito pubblico (GitHub Pages).
+
+---
+
 ## v8 — Libreria satelliti / Catalog ✅ Completa e testata (23 Aprile 2026)
 
 ### Funzionalità
