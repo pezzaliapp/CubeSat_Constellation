@@ -653,11 +653,6 @@ elReset.addEventListener('click', () => { viewer.clock.currentTime = viewer.cloc
       const t = Cesium.JulianDate.toDate(viewer.clock.currentTime)
         .toISOString().replace('T', ' ').replace('Z', ' UTC');
       log(`Tick: sim×${viewer.clock.multiplier}, ~${fps.toFixed(0)} FPS, t=${t}`);
-      // [Step A — eclipse test, rimuovere dopo verifica]
-      if (satEntities.length > 0) {
-        const p = satEntities[0].entity.position.getValue(viewer.clock.currentTime);
-        if (p) console.log(`[Eclipse] ${satEntities[0].name}: ${isInEclipse(p, viewer.clock.currentTime) ? '🌑 ECLISSE' : '☀️ LUCE'}`);
-      }
       // Aggiorna cache eclipse per tutti i satelliti (ogni 2s reali)
       satEntities.forEach(({ satrec, name, entity }) => {
         const now = viewer.clock.currentTime;
@@ -691,8 +686,8 @@ elReset.addEventListener('click', () => { viewer.clock.currentTime = viewer.cloc
         : '-';
 
       const latFix = lat.toFixed(5), lonFix = lon.toFixed(5);
-      const gmaps  = `https://www.google.com/maps/@?api=1&map_action=map&center=${latFix},${lonFix}&zoom=4&basemap=satellite`;
-      const osm    = `https://www.openstreetmap.org/?mlat=${latFix}&mlon=${lonFix}#map=4/${latFix}/${lonFix}`;
+      const gmaps  = `https://www.google.com/maps/@${latFix},${lonFix},8z/data=!3m1!1e3`;
+      const osm    = `https://www.openstreetmap.org/?mlat=${latFix}&mlon=${lonFix}#map=10/${latFix}/${lonFix}`;
       const prefix = satEntities.length > 1 ? `<strong>${primary.name}</strong><br>` : '';
 
       // Badge eclipse: letto dalla cache (aggiornata ogni 2s reali)

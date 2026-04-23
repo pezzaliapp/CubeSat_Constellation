@@ -27,6 +27,7 @@ standard TLE block directly.
 | 📡 Live Celestrak catalog | 10 curated satellites across 4 categories, TLEs fetched fresh |
 | 📊 Real-time telemetry | Altitude, velocity (from `prop.velocity`), real orbital period, lat/lon |
 | ☀️ Sun tracking | Subsolar point, azimuth/elevation, dynamic day/night terminator |
+| 🌑 Eclipse Tracker | Real-time shadow/light state per satellite with countdown to next transition |
 | 🗺 Map links | Google Maps and OpenStreetMap centered on the satellite |
 | 📲 Installable PWA | Works offline on desktop and mobile (iOS, Android, macOS, Windows) |
 
@@ -89,6 +90,7 @@ intera dal catalogo integrato con TLE live da Celestrak, oppure incollare qualsi
 | 📡 Libreria Celestrak live | 10 satelliti in 4 categorie, TLE aggiornati in tempo reale |
 | 📊 Telemetria live | Altitudine, velocità (da `prop.velocity`), periodo orbitale reale, lat/lon |
 | ☀️ Posizione del Sole | Punto subsolare, azimut/elevazione, terminatore giorno/notte |
+| 🌑 Eclipse Tracker | Stato luce/ombra in tempo reale per ogni satellite con countdown alla prossima transizione |
 | 🗺 Link mappa | Google Maps e OpenStreetMap centrati sul satellite |
 | 📲 PWA installabile | Funziona offline su desktop e mobile |
 
@@ -119,7 +121,7 @@ Ideas sourced from the [initial technical analysis](ANALISI_INIZIALE.md).
 |---|---|---|
 | 1 | Multi-satellite constellation mode | ✅ Done (v6) |
 | 2 | Ground station + visibility cone + AOS/LOS | ✅ Done (v9) |
-| 3 | Eclipse tracker — sunlit vs. shadow orbit coloring | ⏳ Planned |
+| 3 | Eclipse tracker — sunlit vs. shadow orbit coloring | ✅ Done (v10) |
 | 4 | Doppler shift calculator for ham radio operators | ⏳ Planned |
 | 5 | Pass predictor with .ics calendar export | ⏳ Planned |
 | 6 | AR sky compass mode (mobile, DeviceOrientation API) | ⏳ Planned |

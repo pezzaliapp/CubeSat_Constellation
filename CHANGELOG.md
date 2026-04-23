@@ -2,6 +2,23 @@
 
 ---
 
+## v10 — Eclipse Tracker (23 Aprile 2026)
+
+### ✨ Nuove feature
+- **Eclipse Tracker** (Idea 3): calcolo in tempo reale dello stato luce/ombra dei satelliti usando il modello cilindrico dell'ombra terrestre
+- **Badge telemetria** con countdown in tempo simulato alla prossima transizione luce↔ombra
+- Supporto multi-satellite: ogni satellite ha il proprio stato eclipse calcolato indipendentemente
+- Cache `eclipseTransitionCache` per disaccoppiare scan costoso (ogni 2s) da aggiornamento UI (tick)
+
+### 🐛 Bug fix
+- Ripristinati link Google Maps/OSM nel pannello telemetria (URL malformato preesistente dalla v5b)
+
+### 📝 Note tecniche
+- Modello matematico cilindrico con errore ~1% (equivalente a ~2-4 min sulle transizioni) — accettabile per visualizzazione
+- Usa `sunECEF(jd)` già presente per la posizione del Sole
+
+---
+
 ## v9 — Ground Station + Cono Visibilità + AOS/LOS ✅ Completa e testata (23 Aprile 2026)
 
 ### Funzionalità
