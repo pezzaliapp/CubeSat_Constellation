@@ -28,6 +28,8 @@ standard TLE block directly.
 | 📊 Real-time telemetry | Altitude, velocity (from `prop.velocity`), real orbital period, lat/lon |
 | ☀️ Sun tracking | Subsolar point, azimuth/elevation, dynamic day/night terminator |
 | 🌑 Eclipse Tracker | Real-time shadow/light state per satellite with countdown to next transition |
+| 📻 Doppler Shift | Real-time range rate + Δf + observed frequency for ham radio (default 437.800 MHz, GS fallback Rome) |
+| 🕐 TLE Age Indicator | Color-coded badge (green <24h, yellow 24–48h, orange 48–72h, red >72h) + auto-refresh every 6h (online only) + manual refresh button |
 | 🗺 Map links | Google Maps and OpenStreetMap centered on the satellite |
 | 📲 Installable PWA | Works offline on desktop and mobile (iOS, Android, macOS, Windows) |
 
@@ -91,6 +93,8 @@ intera dal catalogo integrato con TLE live da Celestrak, oppure incollare qualsi
 | 📊 Telemetria live | Altitudine, velocità (da `prop.velocity`), periodo orbitale reale, lat/lon |
 | ☀️ Posizione del Sole | Punto subsolare, azimut/elevazione, terminatore giorno/notte |
 | 🌑 Eclipse Tracker | Stato luce/ombra in tempo reale per ogni satellite con countdown alla prossima transizione |
+| 📻 Doppler Shift | Range rate + Δf + frequenza osservata in tempo reale per radioamatori (default 437.800 MHz, GS fallback Roma) |
+| 🕐 TLE Age Indicator | Badge colorato (verde <24h, giallo 24–48h, arancione 48–72h, rosso >72h) + auto-refresh ogni 6h (solo online) + pulsante refresh manuale |
 | 🗺 Link mappa | Google Maps e OpenStreetMap centrati sul satellite |
 | 📲 PWA installabile | Funziona offline su desktop e mobile |
 
@@ -122,7 +126,7 @@ Ideas sourced from the [initial technical analysis](ANALISI_INIZIALE.md).
 | 1 | Multi-satellite constellation mode | ✅ Done (v6) |
 | 2 | Ground station + visibility cone + AOS/LOS | ✅ Done (v9) |
 | 3 | Eclipse tracker — sunlit vs. shadow orbit coloring | ✅ Done (v10) |
-| 4 | Doppler shift calculator for ham radio operators | ⏳ Planned |
+| 4 | Doppler shift calculator for ham radio operators | ✅ Done (v10.3) |
 | 5 | Pass predictor with .ics calendar export | ⏳ Planned |
 | 6 | AR sky compass mode (mobile, DeviceOrientation API) | ⏳ Planned |
 | 7 | Orbital decay & re-entry estimator (BSTAR drag term) | ⏳ Planned |

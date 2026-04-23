@@ -1,5 +1,5 @@
 /* CubeSat Orbit — CesiumJS TLE viewer (PWA shell)
- * v9 — Ground Station: cono visibilità + AOS/LOS — MIT 2025
+ * v10.3 — Doppler shift + TLE age indicator + auto-refresh — MIT 2025
  */
 'use strict';
 
@@ -35,6 +35,13 @@ const elStationInfo     = document.getElementById('stationInfo');
 const elStationCoords   = document.getElementById('stationCoords');
 const elAoslosPanel     = document.getElementById('aoslosPanel');
 const elAoslos          = document.getElementById('aoslos');
+const elDopplerPanel    = document.getElementById('dopplerPanel');
+const elDopplerFreq     = document.getElementById('dopplerFreq');
+const elDopplerInfo     = document.getElementById('dopplerInfo');
+const elDopplerGsLabel  = document.getElementById('dopplerGsLabel');
+const elTleStatusList   = document.getElementById('tleStatusList');
+const elBtnRefreshTle   = document.getElementById('btnRefreshTle');
+const elTleAutoStatus   = document.getElementById('tleAutoRefreshStatus');
 
 // ------- PWA Install Prompt -------
 let deferredPrompt = null;
@@ -118,13 +125,25 @@ const PALETTE = [
   Cesium.Color.fromCssColorString('#ffaaaa'),
 ];
 
-// Array entità: { entity, satrec, name, color, periodMin }
+// Array entità: { entity, satrec, name, color, periodMin, norad, epochDate }
 let satEntities = [];
 
 // Stato ground station
 let gsEntity = null;
 let gsGd     = null;   // { longitude, latitude, height } — radianti e km
 let pickMode = false;
+
+// Ground station di fallback per il Doppler: Roma (41.9028°N, 12.4964°E).
+// Usata quando l'utente non ha ancora piazzato una stazione reale.
+const ROMA_GS = {
+  longitude: Cesium.Math.toRadians(12.4964),
+  latitude:  Cesium.Math.toRadians(41.9028),
+  height:    0,
+};
+
+// Timer auto-refresh TLE (ogni 6h se online + satelliti caricati)
+let autoRefreshTimer = null;
+const AUTO_REFRESH_MS = 6 * 3600 * 1000;
 
 // Cache eclipse: evita scan costoso ad ogni tick. Aggiornata ogni 2s reali.
 // name → { transitionJD: JulianDate|null, currentlyInEclipse: bool }
@@ -137,19 +156,32 @@ function log(msg) {
   elLog.textContent = lines.join('\n') + '\n' + msg;
 }
 
+// NORAD catalog number da TLE riga 1, colonne 3-7 (1-based → slice(2,7)).
+function extractNorad(l1) {
+  const n = parseInt(l1.slice(2, 7).trim(), 10);
+  return Number.isFinite(n) ? n : null;
+}
+
 function parseTLEs(text) {
   const lines = text.split('\n').map(s => s.trim()).filter(Boolean);
   const tles = [];
   let i = 0;
   while (i < lines.length) {
     if (lines[i].startsWith('1 ') && i + 1 < lines.length && lines[i + 1].startsWith('2 ')) {
-      tles.push({ name: `SAT-${tles.length + 1}`, l1: lines[i], l2: lines[i + 1] });
+      tles.push({
+        name: `SAT-${tles.length + 1}`,
+        l1: lines[i], l2: lines[i + 1],
+        norad: extractNorad(lines[i]),
+      });
       i += 2;
     } else if (
       !lines[i].startsWith('1 ') && !lines[i].startsWith('2 ') &&
       i + 2 < lines.length && lines[i + 1].startsWith('1 ') && lines[i + 2].startsWith('2 ')
     ) {
-      tles.push({ name: lines[i], l1: lines[i + 1], l2: lines[i + 2] });
+      tles.push({
+        name: lines[i], l1: lines[i + 1], l2: lines[i + 2],
+        norad: extractNorad(lines[i + 1]),
+      });
       i += 3;
     } else {
       i++;
@@ -293,6 +325,60 @@ function fmtTime(jd) {
   });
 }
 
+// ------- Doppler shift -------
+
+// Velocità radiale GS↔satellite via differenza finita in ECEF a 1 s.
+// Convenzione: rangeRate > 0 = satellite che si allontana (Δf negativo).
+// Ritorna { rangeKm, rangeRate_mps, shift_Hz, observed_MHz } o null se propagate fallisce.
+function computeDoppler(satrec, gsGd, jd, freqMHz) {
+  const d1 = Cesium.JulianDate.toDate(jd);
+  const d2 = new Date(d1.getTime() + 1000);
+  const p1 = satellite.propagate(satrec, d1);
+  const p2 = satellite.propagate(satrec, d2);
+  if (!p1.position || !p2.position) return null;
+  const ecf1 = satellite.eciToEcf(p1.position, satellite.gstime(d1));
+  const ecf2 = satellite.eciToEcf(p2.position, satellite.gstime(d2));
+  const gsEcf = satellite.geodeticToEcf(gsGd); // km
+  const r1 = Math.hypot(ecf1.x - gsEcf.x, ecf1.y - gsEcf.y, ecf1.z - gsEcf.z);
+  const r2 = Math.hypot(ecf2.x - gsEcf.x, ecf2.y - gsEcf.y, ecf2.z - gsEcf.z);
+  const rangeRate_mps = (r2 - r1) * 1000; // km/s → m/s
+  const c = 299_792_458;
+  // Doppler non-relativistico: Δf = -f0 · v_r / c
+  const shift_Hz = -freqMHz * 1e6 * rangeRate_mps / c;
+  return {
+    rangeKm: r1,
+    rangeRate_mps,
+    shift_Hz,
+    observed_MHz: freqMHz + shift_Hz / 1e6,
+  };
+}
+
+// ------- TLE age -------
+
+// Epoch dal satrec popolato da twoline2satrec.
+// satrec.epochyr: anno 2-digit (0-56 → 2000+, 57-99 → 1900+)
+// satrec.epochdays: day-of-year frazionario (1 = 1° gennaio 00:00 UTC)
+function tleEpochDate(satrec) {
+  const yr = satrec.epochyr < 57 ? 2000 + satrec.epochyr : 1900 + satrec.epochyr;
+  return new Date(Date.UTC(yr, 0, 1) + (satrec.epochdays - 1) * 86400000);
+}
+
+function tleAgeInfo(epochDate, now = new Date()) {
+  const hours = (now.getTime() - epochDate.getTime()) / 3600000;
+  let tier;
+  if      (hours < 24) tier = 'green';
+  else if (hours < 48) tier = 'yellow';
+  else if (hours < 72) tier = 'orange';
+  else                 tier = 'red';
+  return { hours, tier };
+}
+
+function fmtTleAge(hours) {
+  if (hours < 1)   return `${Math.round(hours * 60)} min`;
+  if (hours < 48)  return `${hours.toFixed(1)} h`;
+  return `${(hours / 24).toFixed(1)} gg`;
+}
+
 function updateAosLos() {
   if (!elAoslos || !gsGd) return;
   if (satEntities.length === 0) {
@@ -322,6 +408,7 @@ function clearGroundStation() {
   if (elStationInfo)  elStationInfo.hidden  = true;
   if (elBtnClearStation) elBtnClearStation.hidden = true;
   if (elAoslosPanel)  elAoslosPanel.hidden  = true;
+  if (typeof updateDopplerGsLabel === 'function') { updateDopplerGsLabel(); renderDoppler(); }
 }
 
 function placeGroundStation(cartesian) {
@@ -373,6 +460,7 @@ function placeGroundStation(cartesian) {
   elBtnClearStation.hidden = false;
   elAoslosPanel.hidden  = false;
   updateAosLos();
+  if (typeof updateDopplerGsLabel === 'function') { updateDopplerGsLabel(); renderDoppler(); }
 }
 
 // Handler click sul globo (attivo solo in pick mode)
@@ -556,6 +644,154 @@ document.getElementById('btnClearTle')?.addEventListener('click', () => {
   elStatus.textContent = 'TLE cancellato — seleziona dalla libreria o incolla manualmente';
 });
 
+// ------- TLE Status / Auto-refresh -------
+
+function renderTleStatus() {
+  if (!elTleStatusList) return;
+  if (satEntities.length === 0) {
+    elTleStatusList.innerHTML = '<span class="tle-empty">Nessun TLE caricato.</span>';
+    return;
+  }
+  const now = new Date();
+  elTleStatusList.innerHTML = satEntities.map(({ name, norad, epochDate }) => {
+    const { hours, tier } = tleAgeInfo(epochDate, now);
+    const age = fmtTleAge(hours);
+    const badge = `<span class="tle-badge badge-${tier}">${age}</span>`;
+    const hint = tier === 'red'
+      ? '<span class="tle-refresh-hint">⚠️ Refresh consigliato</span>'
+      : '';
+    const noradStr = norad ? `NORAD ${norad}` : 'NORAD n/d';
+    const epochStr = epochDate.toISOString().replace('T', ' ').replace('.000Z', ' UTC');
+    return (
+      `<div class="tle-status-row">` +
+        `<span class="tle-status-name">${name}</span>${badge}` +
+        `<div class="tle-status-meta">${noradStr} · epoch ${epochStr}</div>` +
+        hint +
+      `</div>`
+    );
+  }).join('');
+}
+
+function updateAutoRefreshStatusLabel() {
+  if (!elTleAutoStatus) return;
+  if (!navigator.onLine) {
+    elTleAutoStatus.textContent = 'Offline — auto-refresh sospeso';
+    elTleAutoStatus.classList.add('offline');
+  } else {
+    elTleAutoStatus.textContent = 'Auto-refresh: ogni 6h (solo se online)';
+    elTleAutoStatus.classList.remove('offline');
+  }
+}
+
+function scheduleAutoRefresh() {
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+  autoRefreshTimer = setInterval(() => {
+    refreshAllTles({ silent: true });
+  }, AUTO_REFRESH_MS);
+}
+
+async function refreshAllTles({ silent = false } = {}) {
+  if (!navigator.onLine) {
+    if (!silent) elStatus.textContent = 'Offline — refresh non disponibile (uso cache)';
+    return;
+  }
+  if (satEntities.length === 0) {
+    if (!silent) elStatus.textContent = 'Nessun satellite caricato — carica dalla libreria';
+    return;
+  }
+  const needed = [...new Set(satEntities.filter(s => s.norad).map(s => s.norad))];
+  if (needed.length === 0) {
+    if (!silent) elStatus.textContent = 'Nessun NORAD rilevato nei TLE caricati';
+    return;
+  }
+  if (!silent) elStatus.textContent = `Refresh TLE (${needed.length})…`;
+  log(`TLE refresh: ${needed.length} satellite/i (${silent ? 'auto 6h' : 'manuale'})`);
+
+  const results = await Promise.all(needed.map(async (norad) => {
+    try { return { norad, tle: await fetchTLE(norad) }; }
+    catch (e) { return { norad, err: e.message }; }
+  }));
+  const ok  = results.filter(r => r.tle);
+  const err = results.filter(r => r.err);
+  if (ok.length === 0) {
+    elStatus.textContent = `Refresh fallito: ${err[0]?.err || 'errore sconosciuto'}`;
+    log(`TLE refresh errore: ${err.map(e => `${e.norad}:${e.err}`).join(', ')}`);
+    return;
+  }
+  elTLE.value = ok.map(r => r.tle).join('\n');
+  elStatus.textContent = err.length
+    ? `TLE aggiornati (${ok.length}/${needed.length}) ⚠ — ri-simulo`
+    : `TLE aggiornati (${ok.length}) ✅ — ri-simulo`;
+  elSim.click();           // ri-esegue la simulazione con i TLE freschi
+  scheduleAutoRefresh();   // reset timer 6h dopo refresh manuale
+}
+
+elBtnRefreshTle?.addEventListener('click', () => refreshAllTles({ silent: false }));
+
+window.addEventListener('online',  updateAutoRefreshStatusLabel);
+window.addEventListener('offline', updateAutoRefreshStatusLabel);
+
+// ------- Doppler rendering -------
+
+function currentGsForDoppler() {
+  // Ritorna { gd, isDefault }
+  return gsGd
+    ? { gd: gsGd, isDefault: false }
+    : { gd: ROMA_GS, isDefault: true };
+}
+
+function updateDopplerGsLabel() {
+  if (!elDopplerGsLabel) return;
+  const { isDefault } = currentGsForDoppler();
+  if (isDefault) {
+    elDopplerGsLabel.className = 'pill pill-gs-default';
+    elDopplerGsLabel.textContent = '📍 GS default: Roma — piazza una stazione per valori reali';
+  } else {
+    const lat = Cesium.Math.toDegrees(gsGd.latitude).toFixed(3);
+    const lon = Cesium.Math.toDegrees(gsGd.longitude).toFixed(3);
+    elDopplerGsLabel.className = 'pill pill-gs-active';
+    elDopplerGsLabel.textContent = `📡 GS attiva: ${lat}°, ${lon}°`;
+  }
+}
+
+function fmtSignedHz(hz) {
+  const sign = hz >= 0 ? '+' : '−';
+  const abs  = Math.abs(hz);
+  if (abs >= 1000) return `${sign}${(abs / 1000).toFixed(2)} kHz`;
+  return `${sign}${abs.toFixed(0)} Hz`;
+}
+
+function renderDoppler() {
+  if (!elDopplerPanel || !elDopplerInfo) return;
+  if (!elDopplerPanel.open) return;  // skippa calcolo se il pannello è chiuso
+  if (satEntities.length === 0) {
+    elDopplerInfo.textContent = 'Doppler: premi Simula per avviare il calcolo.';
+    return;
+  }
+  const freq = parseFloat(elDopplerFreq?.value);
+  if (!Number.isFinite(freq) || freq <= 0) {
+    elDopplerInfo.textContent = 'Doppler: frequenza non valida.';
+    return;
+  }
+  const { gd } = currentGsForDoppler();
+  const jd = viewer.clock.currentTime;
+  const lines = satEntities.map(({ satrec, name }) => {
+    const d = computeDoppler(satrec, gd, jd, freq);
+    if (!d) return `${name}: (propagazione non disponibile)`;
+    const trend = d.rangeRate_mps < 0 ? '↗ avvicinamento' : '↘ allontanamento';
+    return (
+      `${name}\n` +
+      `  Range: ${d.rangeKm.toFixed(0)} km · v_r: ${d.rangeRate_mps.toFixed(0)} m/s ${trend}\n` +
+      `  Δf: ${fmtSignedHz(d.shift_Hz)} · f_osservata: ${d.observed_MHz.toFixed(6)} MHz`
+    );
+  });
+  elDopplerInfo.textContent = lines.join('\n\n');
+}
+
+// Re-render Doppler quando l'utente cambia frequenza o apre il pannello
+elDopplerFreq?.addEventListener('input', renderDoppler);
+elDopplerPanel?.addEventListener('toggle', renderDoppler);
+
 // ------- Simulate -------
 elSim.addEventListener('click', () => {
   try {
@@ -571,7 +807,7 @@ elSim.addEventListener('click', () => {
     const multiMode = tles.length > 1;
     let globalStart = null, globalStop = null;
 
-    tles.forEach(({ name, l1, l2 }, idx) => {
+    tles.forEach(({ name, l1, l2, norad }, idx) => {
       const color = PALETTE[idx % PALETTE.length];
       const { positions, start, stop, hasPoints, satrec } =
         buildPositionsFromTLE(l1, l2, minutes, stepSec);
@@ -582,6 +818,7 @@ elSim.addEventListener('click', () => {
 
       // Fix: periodo orbitale calcolato da satrec.no (rad/min) → T = 2π / no minuti
       const periodMin = (2 * Math.PI / satrec.no).toFixed(1);
+      const epochDate = tleEpochDate(satrec);
 
       const handle = { entity: null };
       const labelText = new Cesium.CallbackProperty(() => {
@@ -625,7 +862,7 @@ elSim.addEventListener('click', () => {
       });
 
       handle.entity = ent;
-      satEntities.push({ entity: ent, satrec, name, color, periodMin });
+      satEntities.push({ entity: ent, satrec, name, color, periodMin, norad, epochDate });
     });
 
     if (satEntities.length === 0) throw new Error('Nessun TLE valido propagato.');
@@ -641,6 +878,9 @@ elSim.addEventListener('click', () => {
       .then(() => { viewer.trackedEntity = undefined; });
 
     if (gsGd) updateAosLos();
+    renderTleStatus();
+    updateDopplerGsLabel();
+    renderDoppler();
 
     const count = satEntities.length;
     elStatus.textContent = count === 1 ? 'Simulazione pronta ✅' : `${count} satelliti caricati ✅`;
@@ -704,7 +944,10 @@ elReset.addEventListener('click', () => { viewer.clock.currentTime = viewer.cloc
       const latFix = lat.toFixed(5), lonFix = lon.toFixed(5);
       const gmaps  = `https://www.google.com/maps/@${latFix},${lonFix},8z/data=!3m1!1e3`;
       const osm    = `https://www.openstreetmap.org/?mlat=${latFix}&mlon=${lonFix}#map=10/${latFix}/${lonFix}`;
-      const prefix = satEntities.length > 1 ? `<strong>${primary.name}</strong><br>` : '';
+      // Badge TLE age inline accanto al nome del satellite primario
+      const ageInfo = tleAgeInfo(primary.epochDate);
+      const ageBadge = `<span class="tle-badge badge-${ageInfo.tier}">TLE ${fmtTleAge(ageInfo.hours)}</span>`;
+      const prefix = `<strong>${primary.name}</strong> ${ageBadge}<br>`;
 
       // Badge eclipse: letto dalla cache (aggiornata ogni 2s reali)
       const eclipseLines = satEntities.map(({ name }) => {
@@ -763,4 +1006,18 @@ elReset.addEventListener('click', () => { viewer.clock.currentTime = viewer.cloc
   });
 })();
 
+// Loop dedicato 1 Hz per Doppler + TLE age UI.
+// Doppler a 1 Hz è adeguato: la rate di variazione Δf al passaggio
+// più rapido (ISS a 437 MHz) è dell'ordine di qualche centinaio di Hz/s.
+setInterval(() => {
+  try {
+    renderDoppler();
+    renderTleStatus();
+  } catch (_) {}
+}, 1000);
+
 renderCatalog();
+renderTleStatus();
+updateDopplerGsLabel();
+updateAutoRefreshStatusLabel();
+scheduleAutoRefresh();

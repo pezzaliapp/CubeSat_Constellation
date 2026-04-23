@@ -2,6 +2,39 @@
 
 ---
 
+## v10.3 — Doppler Shift + TLE Age Indicator (23 Aprile 2026)
+
+### ✨ Nuove feature
+- **Doppler Shift Modeling** (Idea 4): calcolo in tempo reale della velocità radiale GS↔satellite e del corrispondente shift Doppler a partire dalla frequenza di downlink impostata dall'utente (default 437.800 MHz, standard UHF amatoriale). Per ogni satellite caricato viene mostrato:
+  - Range istantaneo (km)
+  - Velocità radiale `v_r` (m/s) con indicatore avvicinamento/allontanamento (↗ / ↘)
+  - Shift Δf con segno (Hz o kHz)
+  - Frequenza osservata corretta (MHz a 6 cifre decimali)
+- **Ground Station per il Doppler**: riusa `gsGd` (piazza stazione / geolocalizzazione) se presente; altrimenti fallback automatico a **Roma (41.9028°N, 12.4964°E)** con label esplicita "📍 GS default: Roma — piazza una stazione per valori reali".
+- **TLE Age Indicator**: badge colorato accanto al nome del satellite nel pannello telemetria e nel nuovo pannello dedicato "🕐 TLE Status":
+  - 🟢 verde `< 24h` · 🟡 giallo `24–48h` · 🟠 arancione `48–72h` · 🔴 rosso `> 72h`
+  - Sotto al badge rosso compare l'hint "⚠️ Refresh consigliato"
+  - Mostra per ogni satellite età, NORAD catalog number ed epoch UTC
+- **Auto-refresh TLE ogni 6h**: timer `setInterval` che richiama `fetchTLE` da Celestrak per tutti i satelliti caricati con NORAD valido. Il refresh viene **saltato silenziosamente** se `navigator.onLine === false`.
+- **Pulsante "🔄 Refresh TLE now"** sempre visibile nel pannello TLE Status; il timer 6h viene **resettato** dopo ogni refresh manuale per evitare refresh doppi ravvicinati.
+- **Estrazione NORAD dal TLE** (riga 1, colonne 3-7): consente l'auto-refresh anche per TLE incollati manualmente dall'utente, non solo per quelli caricati dal catalogo.
+- **Listener `online`/`offline`**: il label dello stato auto-refresh si aggiorna live (grigio quando online, rosso "Offline — auto-refresh sospeso" quando offline).
+
+### 🧮 Dettagli tecnici
+- **Algoritmo Doppler**: differenza finita della distanza sat↔GS in ECEF su 1 s — esatta per costruzione, evita problemi di conversione frame ECI→ECEF per il vettore velocità. Una `satellite.propagate()` extra per tick.
+- **Formula**: `Δf = −f₀ · v_r / c` (convenzione radio). `v_r > 0` = allontanamento → Δf negativo → frequenza osservata più bassa. `v_r < 0` = avvicinamento → Δf positivo → frequenza osservata più alta.
+- **Frequenza aggiornamento UI Doppler**: 1 Hz (setInterval dedicato). Adeguata per un pass LEO veloce (rate Δf ~qualche centinaio di Hz/s).
+- **TLE epoch**: calcolato da `satrec.epochyr` + `satrec.epochdays` popolati da `twoline2satrec`, con mapping `yr < 57 → 2000+yr` altrimenti `1900+yr` (convenzione TLE standard).
+- `satEntities` arricchito con `{ norad, epochDate }` oltre ai campi preesistenti.
+
+### 📦 Version bump
+- `manifest.json`: `v10.3` (name + short_name)
+- `service-worker.js`: cache `cesium-cubesat-v17` → `v18`
+- `index.html`: footer `v10.3.0`, title `(PWA) v10.3`
+- `app.js`: header commento bump
+
+---
+
 ## v10.1 — Cesium Ion imagery fotorealistica (23 Aprile 2026)
 
 ### ✨ Nuove feature

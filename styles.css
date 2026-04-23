@@ -173,6 +173,80 @@ pre{padding:10px;white-space:pre-wrap;overflow:auto}
 }
 .btn-minor:hover{ color:var(--ink); border-color:var(--ink); }
 
+/* === Doppler panel === */
+.doppler-inputs{ margin-bottom:10px; }
+.doppler-inputs input{ font-family:ui-monospace,monospace; }
+.pill-gs-default{
+  font-size:11px;
+  color:#ffcc66;
+  border-color:#ffcc6655;
+  line-height:1.3;
+  display:block;
+  margin-top:4px;
+  padding:6px 10px;
+}
+.pill-gs-active{
+  font-size:11px;
+  color:#88ff44;
+  border-color:#88ff4466;
+  line-height:1.3;
+  display:block;
+  margin-top:4px;
+  padding:6px 10px;
+  border:1px solid;
+  border-radius:999px;
+}
+
+/* === TLE Status / age badges === */
+.tle-status-header{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:10px;
+  margin-bottom:10px;
+}
+.tle-status-header .btn-minor{ width:auto; }
+.tle-auto-status{
+  font-size:11px;
+  color:var(--mut);
+}
+.tle-auto-status.offline{ color:#ff8888; }
+.tle-empty{
+  font-size:12px;
+  color:var(--mut);
+  font-style:italic;
+}
+.tle-status-row{
+  padding:8px 0;
+  border-bottom:1px solid var(--line);
+}
+.tle-status-row:last-child{ border-bottom:none; }
+.tle-status-name{ font-weight:600; }
+.tle-status-meta{
+  font-size:11px;
+  color:var(--mut);
+  margin-top:2px;
+}
+.tle-badge{
+  display:inline-block;
+  padding:2px 9px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:600;
+  margin-left:6px;
+  vertical-align:baseline;
+}
+.badge-green { background:rgba(0,255,136,.12); color:#00ff88; border:1px solid rgba(0,255,136,.5); }
+.badge-yellow{ background:rgba(255,204,0,.12); color:#ffcc00; border:1px solid rgba(255,204,0,.5); }
+.badge-orange{ background:rgba(255,136,0,.15); color:#ff8800; border:1px solid rgba(255,136,0,.55); }
+.badge-red   { background:rgba(255,68,68,.15); color:#ff4444; border:1px solid rgba(255,68,68,.6); }
+.tle-refresh-hint{
+  display:block;
+  font-size:11px;
+  color:#ff6666;
+  margin-top:2px;
+}
+
 /* =============================================
    MOBILE — solo schermi ≤ 768px
    Il CSS desktop sopra non viene toccato.

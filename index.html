@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
-  <title>CubeSat Orbit — CesiumJS (PWA) v10</title>
+  <title>CubeSat Orbit — CesiumJS (PWA) v10.3</title>
   <meta name="theme-color" content="#0b1022" />
   <meta name="description" content="PWA CesiumJS stabile per visualizzare orbite satellitari in tempo reale. Compatibile con iPhone e iPad." />
   <link rel="manifest" href="manifest.json" />
@@ -78,7 +78,31 @@ Azimut/Elev: -</pre></div>
       <pre id="log">Log…</pre>
     </section>
 
-    <footer>MIT © 2025 — pezzaliAPP.com · <span class="ver">v10.2.0</span></footer>
+    <details class="card" id="dopplerPanel">
+      <summary>📻 Doppler Shift</summary>
+      <div class="two doppler-inputs">
+        <div>
+          <label for="dopplerFreq">Frequenza downlink (MHz)</label>
+          <input id="dopplerFreq" type="number" value="437.800" step="0.001" min="1" max="30000">
+        </div>
+        <div>
+          <label>Ground Station</label>
+          <div id="dopplerGsLabel" class="pill pill-gs-default">📍 GS default: Roma — piazza una stazione per valori reali</div>
+        </div>
+      </div>
+      <pre id="dopplerInfo">Doppler: premi Simula per avviare il calcolo.</pre>
+    </details>
+
+    <details class="card" id="tleStatusPanel">
+      <summary>🕐 TLE Status</summary>
+      <div class="tle-status-header">
+        <button id="btnRefreshTle" class="btn-minor">🔄 Refresh TLE now</button>
+        <span id="tleAutoRefreshStatus" class="tle-auto-status">Auto-refresh: ogni 6h (solo se online)</span>
+      </div>
+      <div id="tleStatusList"><span class="tle-empty">Nessun TLE caricato.</span></div>
+    </details>
+
+    <footer>MIT © 2025 — pezzaliAPP.com · <span class="ver">v10.3.0</span></footer>
   </main>
 
   <!-- Script -->
