@@ -1,5 +1,5 @@
 /* CubeSat Orbit — CesiumJS TLE viewer (PWA shell)
- * v7 — Bug fix: periodo orbitale reale, velocità da prop.velocity — MIT 2025
+ * v8 — Libreria satelliti con fetch live da Celestrak — MIT 2025
  */
 'use strict';
 
@@ -172,6 +172,106 @@ function sunECEF(jd) {
       : new Cesium.Cartesian3(x, y, z);
   } catch (_) { return null; }
 }
+
+// ------- Catalog -------
+const CATALOG = [
+  {
+    group: '🛰 Stazioni spaziali',
+    items: [
+      { name: 'ISS (ZARYA)', norad: 25544 },
+      { name: 'Tiangong (CSS)', norad: 48274 },
+    ],
+  },
+  {
+    group: '🔭 Telescopi',
+    items: [
+      { name: 'Hubble (HST)', norad: 20580 },
+      { name: 'TESS', norad: 43435 },
+      { name: 'Fermi GBM', norad: 33053 },
+    ],
+  },
+  {
+    group: '🌦 Meteo / Earth Obs',
+    items: [
+      { name: 'NOAA-19', norad: 33591 },
+      { name: 'MetOp-C', norad: 43689 },
+      { name: 'Suomi NPP', norad: 37849 },
+    ],
+  },
+  {
+    group: '📦 CubeSat',
+    items: [
+      { name: 'ArduSat-1', norad: 39090 },
+      { name: 'CUTE', norad: 49263 },
+    ],
+  },
+];
+
+async function fetchTLE(norad) {
+  const url = `https://celestrak.org/satcat/tle.php?CATNR=${norad}`;
+  let resp;
+  try {
+    resp = await fetch(url);
+  } catch (_) {
+    throw new Error(`rete/CORS — scarica manualmente da celestrak.org/satcat/tle.php?CATNR=${norad}`);
+  }
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  const text = await resp.text();
+  if (!text.trim() || !text.includes('1 ') || !text.includes('2 ')) {
+    throw new Error('risposta non contiene TLE validi');
+  }
+  return text.trim();
+}
+
+function renderCatalog() {
+  const container = document.getElementById('catalogGrid');
+  if (!container) return;
+  CATALOG.forEach(({ group, items }) => {
+    const groupEl = document.createElement('div');
+    groupEl.className = 'catalog-group';
+
+    const label = document.createElement('span');
+    label.className = 'catalog-label';
+    label.textContent = group;
+    groupEl.appendChild(label);
+
+    const btns = document.createElement('div');
+    btns.className = 'catalog-btns';
+    items.forEach(({ name, norad }) => {
+      const btn = document.createElement('button');
+      btn.textContent = name;
+      btn.className = 'cat-btn';
+      btn.title = `NORAD ${norad} — aggiunge al campo TLE`;
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        const orig = btn.textContent;
+        btn.textContent = '⏳';
+        try {
+          const tle = await fetchTLE(norad);
+          const cur = elTLE.value.trim();
+          elTLE.value = cur ? cur + '\n' + tle : tle;
+          elStatus.textContent = `${name} aggiunto ✅ — premi Simula`;
+          log(`Catalog: ${name} (NORAD ${norad}) caricato.`);
+        } catch (e) {
+          elStatus.textContent = `Fetch ${name} fallito: ${e.message}`;
+          log(`Catalog errore (NORAD ${norad}): ${e.message}`);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = orig;
+        }
+      });
+      btns.appendChild(btn);
+    });
+
+    groupEl.appendChild(btns);
+    container.appendChild(groupEl);
+  });
+}
+
+document.getElementById('btnClearTle')?.addEventListener('click', () => {
+  elTLE.value = '';
+  elStatus.textContent = 'TLE cancellato — seleziona dalla libreria o incolla manualmente';
+});
 
 // ------- Simulate -------
 elSim.addEventListener('click', () => {
@@ -348,3 +448,5 @@ elReset.addEventListener('click', () => { viewer.clock.currentTime = viewer.cloc
     } catch (_) {}
   });
 })();
+
+renderCatalog();

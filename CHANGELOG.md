@@ -2,6 +2,18 @@
 
 ---
 
+## v8 — Libreria satelliti / Catalog (2025-04-23)
+
+### Funzionalità
+- **Pannello Libreria collassabile** (`<details>`): appare tra il globo e i controlli, nessun JS necessario per il toggle.
+- **Fetch live da Celestrak** (`fetchTLE`): ogni pulsante del catalogo scarica il TLE aggiornato da `celestrak.org/satcat/tle.php?CATNR={norad}` e lo appende al campo TLE esistente. Errori CORS/rete restituiscono un messaggio con l'URL manuale di fallback.
+- **Catalogo curato** (10 satelliti in 4 categorie): Stazioni spaziali (ISS, Tiangong), Telescopi (Hubble, TESS, Fermi), Meteo/EO (NOAA-19, MetOp-C, Suomi NPP), CubeSat (ArduSat-1, CUTE).
+- **Pulsante "🗑 Cancella TLE"**: resetta il campo TLE per permettere di costruire una nuova costellazione dal catalogo.
+- **Comportamento additive**: clic sul catalogo aggiunge TLE all'esistente — si possono caricare ISS + Hubble + NOAA in sequenza per una costellazione multi-satellite.
+- **Cache SW `v9`**: invalida la cache precedente.
+
+---
+
 ## v7 — Bug Fix (2025-04-23)
 
 ### Fix
